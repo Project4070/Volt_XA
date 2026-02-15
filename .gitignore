@@ -1,0 +1,29 @@
+# Build
+target/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Rust
+**/*.rs.bk
+
+# Binary artifacts (regenerable)
+*.bin
+*.pt
+*.safetensors
+checkpoints/
+models/
+
+# Environment
+.env
+
+# Data (stored on D: drive, not in repo)
+data/

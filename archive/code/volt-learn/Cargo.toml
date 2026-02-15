@@ -1,0 +1,54 @@
+[package]
+name = "volt-learn"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+volt-core = { workspace = true, features = ["serde"] }
+volt-bus.workspace = true
+volt-db.workspace = true
+volt-soft.workspace = true
+volt-translate.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rand.workspace = true
+rayon.workspace = true
+
+# Code-training-only dependencies (compiled only with `code-training` feature)
+candle-core = { workspace = true, optional = true }
+candle-nn = { workspace = true, optional = true }
+tokenizers = { workspace = true, optional = true }
+
+[features]
+default = []
+code-training = ["volt-translate/code-training", "dep:candle-core", "dep:candle-nn", "dep:tokenizers"]
+vfn-training = ["code-training", "volt-soft/gpu"]
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile = "3"
+
+[[bin]]
+name = "codebook-init"
+path = "src/bin/codebook_init.rs"
+
+[[bin]]
+name = "train-tokenizer"
+path = "src/bin/train_tokenizer.rs"
+required-features = ["code-training"]
+
+[[bin]]
+name = "train-encoder"
+path = "src/bin/train_encoder.rs"
+required-features = ["code-training"]
+
+[[bin]]
+name = "train-decoder"
+path = "src/bin/train_decoder.rs"
+required-features = ["code-training"]
+
+[[bin]]
+name = "train-vfn"
+path = "src/bin/train_vfn.rs"
+required-features = ["vfn-training"]

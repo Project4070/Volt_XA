@@ -1,0 +1,24 @@
+[package]
+name = "volt-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde = { workspace = true, optional = true }
+serde-big-array = { workspace = true, optional = true }
+rkyv = { workspace = true, optional = true }
+
+[dev-dependencies]
+criterion.workspace = true
+proptest.workspace = true
+serde_json.workspace = true
+
+[features]
+default = []
+serde = ["dep:serde", "dep:serde-big-array"]
+rkyv = ["dep:rkyv"]
+
+[[bench]]
+name = "frame_bench"
+harness = false

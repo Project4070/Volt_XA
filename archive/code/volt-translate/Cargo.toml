@@ -1,0 +1,25 @@
+[package]
+name = "volt-translate"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+volt-core.workspace = true
+volt-bus.workspace = true
+volt-db.workspace = true
+thiserror.workspace = true
+
+# LLM-only dependencies (compiled only with `llm` feature)
+candle-core = { workspace = true, optional = true }
+candle-nn = { workspace = true, optional = true }
+candle-transformers = { workspace = true, optional = true }
+tokenizers = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+
+[features]
+default = []
+llm = ["dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:tokenizers", "dep:serde_json"]
+code-training = ["dep:candle-core", "dep:candle-nn", "dep:tokenizers", "dep:serde_json"]
+
+[dev-dependencies]
+proptest.workspace = true
