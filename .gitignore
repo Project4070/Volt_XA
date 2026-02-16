@@ -1,9 +1,13 @@
 # Build
 target/
 
+# Dependencies
+node_modules/
+
 # IDE
 .vscode/
 .idea/
+.obsidian/
 *.swp
 *.swo
 
