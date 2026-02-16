@@ -1,0 +1,14 @@
+{
+  "name": "volt-xa-visualization",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --format=iife --outfile=dist/bundle.js --minify --target=es2020"
+  },
+  "dependencies": {
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

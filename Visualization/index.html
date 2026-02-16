@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volt XA — Architecture Visualization</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            overflow: hidden;
+            background: #06060f;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            color: #e2e8f0;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* === HUD OVERLAY === */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Top-left: FPS + Layer name */
+        #hud-top-left {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+        }
+
+        #fps {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        #layer-name {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        /* Top-right: Controls */
+        #hud-top-right {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            pointer-events: auto;
+        }
+
+        .hud-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            color: #94a3b8;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .hud-btn:hover {
+            background: rgba(51, 65, 85, 0.9);
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+
+        .hud-btn.active {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+            color: #93c5fd;
+        }
+
+        #speed-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        #speed-slider {
+            width: 80px;
+            accent-color: #3b82f6;
+        }
+
+        /* Bottom-center: Layer navigation */
+        #layer-nav {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            pointer-events: auto;
+        }
+
+        .layer-btn {
+            width: 36px;
+            height: 28px;
+            border: 1px solid #334155;
+            background: rgba(15, 23, 42, 0.8);
+            color: #64748b;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .layer-btn:hover {
+            background: rgba(30, 41, 59, 0.9);
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+
+        .layer-btn[data-color] {
+            border-bottom: 2px solid var(--layer-color);
+        }
+
+        /* Bottom-right: Help */
+        #help-toggle {
+            position: absolute;
+            bottom: 20px;
+            right: 16px;
+            pointer-events: auto;
+        }
+
+        #help-panel {
+            display: none;
+            position: absolute;
+            bottom: 60px;
+            right: 16px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 11px;
+            line-height: 1.8;
+            color: #94a3b8;
+            min-width: 220px;
+            pointer-events: auto;
+        }
+
+        #help-panel.visible {
+            display: block;
+        }
+
+        #help-panel kbd {
+            background: rgba(51, 65, 85, 0.8);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            color: #e2e8f0;
+        }
+
+        /* Title overlay */
+        #title {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            opacity: 1;
+            transition: opacity 2s;
+            pointer-events: none;
+        }
+
+        #title.hidden { opacity: 0; pointer-events: none; }
+
+        #title h1 {
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 8px;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+        }
+
+        #title h1 span {
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #title p {
+            font-size: 12px;
+            color: #64748b;
+            letter-spacing: 3px;
+        }
+
+        #title .loading-bar {
+            width: 120px;
+            height: 2px;
+            background: #1e293b;
+            margin: 16px auto 0;
+            border-radius: 1px;
+            overflow: hidden;
+        }
+
+        #title .loading-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #22d3ee);
+            animation: loading-sweep 2s ease-in-out forwards;
+            border-radius: 1px;
+        }
+
+        @keyframes loading-sweep {
+            0% { width: 0%; }
+            60% { width: 80%; }
+            100% { width: 100%; }
+        }
+
+        #title .hint {
+            font-size: 10px;
+            color: #475569;
+            margin-top: 12px;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+
+        <!-- HUD Overlay -->
+        <div id="hud">
+            <!-- Top Left -->
+            <div id="hud-top-left">
+                <div id="fps">-- FPS</div>
+                <div id="layer-name">overview</div>
+                <div id="pipeline-state" style="font-size: 11px; color: #3b82f6; margin-top: 4px;">Idle</div>
+            </div>
+
+            <!-- Top Right -->
+            <div id="hud-top-right">
+                <div id="speed-control">
+                    <span>Speed</span>
+                    <input type="range" id="speed-slider" min="0.5" max="4" step="0.5" value="1">
+                    <span id="speed-value">1x</span>
+                </div>
+                <button class="hud-btn" id="btn-play-pause">Pause</button>
+                <button class="hud-btn" id="btn-auto-tour">Tour</button>
+            </div>
+
+            <!-- Bottom Center: Layer Navigation -->
+            <div id="layer-nav">
+                <button class="layer-btn" data-layer="overview" style="--layer-color: #e2e8f0">OV</button>
+                <button class="layer-btn" data-layer="translators" style="--layer-color: #22d3ee">L1</button>
+                <button class="layer-btn" data-layer="bus" style="--layer-color: #f59e0b">L2</button>
+                <button class="layer-btn" data-layer="gpuSoftCore" style="--layer-color: #3b82f6">L3</button>
+                <button class="layer-btn" data-layer="cpuHardCore" style="--layer-color: #f59e0b">L4</button>
+                <button class="layer-btn" data-layer="voltDB" style="--layer-color: #ec4899">L5</button>
+                <button class="layer-btn" data-layer="outputCores" style="--layer-color: #10b981">L6</button>
+                <button class="layer-btn" data-layer="learning" style="--layer-color: #059669">L7</button>
+                <button class="layer-btn" data-layer="commons" style="--layer-color: #f97316">L8</button>
+                <button class="layer-btn" data-layer="ui" style="--layer-color: #e2e8f0">L9</button>
+                <button class="layer-btn" data-layer="sockets" style="--layer-color: #b45309">10</button>
+            </div>
+
+            <!-- Bottom Right: Help -->
+            <div id="help-toggle">
+                <button class="hud-btn" id="btn-help">?</button>
+            </div>
+
+            <div id="help-panel">
+                <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</div>
+                <div><kbd>Q</kbd><kbd>E</kbd> Up / Down</div>
+                <div><kbd>Right-click</kbd> + drag — Look</div>
+                <div><kbd>Scroll</kbd> Adjust speed</div>
+                <div><kbd>Space</kbd> Toggle auto / manual</div>
+                <div><kbd>1</kbd>-<kbd>9</kbd>,<kbd>0</kbd> Jump to layer</div>
+                <div><kbd>P</kbd> Play / Pause animation</div>
+                <div><kbd>F</kbd> Focus hovered component</div>
+                <div><kbd>T</kbd> Follow particle</div>
+                <div><kbd>Esc</kbd> Unfocus / close panel</div>
+            </div>
+
+            <!-- Title Screen / Loading -->
+            <div id="title">
+                <h1><span>VOLT</span> XA</h1>
+                <p>COGNITIVE ARCHITECTURE VISUALIZATION</p>
+                <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+                <div class="hint">WASD to fly &middot; Right-click to look &middot; 1-9 to jump</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // HUD interactivity (vanilla JS, no framework)
+
+        // Speed slider
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        speedSlider.addEventListener('input', () => {
+            speedValue.textContent = speedSlider.value + 'x';
+            window.dispatchEvent(new CustomEvent('pipeline-speed', { detail: parseFloat(speedSlider.value) }));
+        });
+
+        // Play/Pause button
+        document.getElementById('btn-play-pause').addEventListener('click', () => {
+            window.dispatchEvent(new CustomEvent('pipeline-play-pause'));
+        });
+
+        // Tour button
+        document.getElementById('btn-auto-tour').addEventListener('click', () => {
+            window.dispatchEvent(new CustomEvent('toggle-tour'));
+        });
+
+        // Help toggle
+        const helpPanel = document.getElementById('help-panel');
+        document.getElementById('btn-help').addEventListener('click', () => {
+            helpPanel.classList.toggle('visible');
+        });
+
+        // Layer navigation buttons
+        document.querySelectorAll('.layer-btn').forEach(btn => {
+            btn.style.borderBottom = `2px solid ${btn.style.getPropertyValue('--layer-color')}`;
+            btn.addEventListener('click', () => {
+                const layer = btn.dataset.layer;
+                // Dispatch a custom event that main.js can listen to
+                window.dispatchEvent(new CustomEvent('layer-focus', { detail: layer }));
+                document.getElementById('layer-name').textContent = layer;
+            });
+        });
+
+        // Hide title after 3 seconds
+        setTimeout(() => {
+            document.getElementById('title').classList.add('hidden');
+        }, 3000);
+    </script>
+
+    <!-- Bundled visualization (works from file:// — no server needed) -->
+    <script src="dist/bundle.js"></script>
+</body>
+</html>
